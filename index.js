@@ -1,12 +1,12 @@
-const discord = require('discord.js');
+const Discord = require('discord.js');
+const puppeteer = require('puppeteer');
 const {MessageAttachment} = require('discord.js');
 const MongoClient = require('mongodb').MongoClient;
-const bot = new discord.Client();
+const bot = new Discord.Client();
 
 const prefix = '!';
-const url = 'MONGODB URL';
+const url = //MONGODB DATABASE URL;
 
-// programming languages
 const c = '761802356420509696';
 const cplusplus = '761802113101463552';
 const csharp = '775137620388085781';
@@ -20,7 +20,6 @@ const ruby = '775138938833731584';
 const scala = '761802623820496928';
 const swift = '775139213858308096';
 
-//pronouns
 const sheher = '775127215292940338';
 const hehim = '775127950156627979';
 const theythem = '775128011690344448';
@@ -34,28 +33,56 @@ bot.on('ready', () => {
 bot.on('message', message => {
     if(message.author.bot) {
         return;
-    }
-    if(message.content.includes('hello')) {
+    } if(message.content.includes('hello')) {
         message.channel.send('```hello 👋```');
         return;
-    }
-    if(!message.content.startsWith(prefix)) {
+    } if(!message.content.startsWith(prefix)) {
         return;
-    } 
-    let args = message.content.substring(prefix.length).split(' ');
+    }
 
+    async function scrape(url){
+        message.channel.send('```loading...```');
+        const browser = await puppeteer.launch({
+            args: ['--no-sandbox','--disable-setuid-sandbox',],
+        });
+        const page = await browser.newPage();
+        await page.goto(url);
+        
+        await page.waitForXPath('//*[@id="export-chart-element"]/div/section/div[1]/div[1]/div[2]/div');
+        const [el] = await page.$x('//*[@id="export-chart-element"]/div/section/div[1]/div[1]/div[2]/div');
+        const txt = await el.getProperty("textContent");
+        const rawText = await txt.jsonValue();
+    
+        message.channel.send('```' + rawText + '\nlink: ' + url + '```')
+    
+        browser.close();
+    }
+
+    let args = message.content.substring(prefix.length).split(' ');
     switch(args[0]) {
+        case 'btc':
+            scrape('https://www.coindesk.com/price/bitcoin')
+        break;
+
+        case 'eth':
+            scrape('https://www.coindesk.com/price/ethereum')
+        break;
+
+        case 'doge':
+            scrape('https://www.coindesk.com/price/dogecoin')
+        break;
+
         case 'help':
             if(!message.channel.name.includes('bot-spam')) {
-                message.channel.send('```Error: invalid channel to send commands```')
+                message.channel.send('```error: invalid channel to send commands```')
                 return;
             }
-            message.channel.send('```commands:\n!feed\n!mute\n!unmute\n!role, role <value>, role remove <value>```');
+            message.channel.send('```commands:\n!btc\n!eth\n!doge\n!feed\n!gif, gif <value>\n!mute\n!unmute\n!role, role <value>, role remove <value>```');
         break;
 
         case 'feed':
             if(!message.channel.name.includes('bot-spam')) {
-                message.channel.send('```Error: invalid channel to send command```')
+                message.channel.send('```error: invalid channel to send commands```')
                 return;
             }
             var counter = 0;
@@ -86,41 +113,50 @@ bot.on('message', message => {
         break;
 
         case 'gif':
-            if(args[1] === "popcorn") {
+            if(!args[1]) {
+                message.channel.send('```error: no second argument```');
+            } if(args[1] === "popcorn") {
                 const attachment = new MessageAttachment("./gifs/popcorn.gif");
+                message.channel.send(attachment);
+            } if(args[1] === "cat") {
+                const attachment = new MessageAttachment("./gifs/cat.gif");
                 message.channel.send(attachment);
             }
         break;
 
         case 'mute':
-            if (message.member.voice.channel) {
+            if(!message.member.roles.cache.some(r => r.name === 'officers')) {
+                message.channel.send('```error: you do not have permission to use this command```');
+                return;
+            } if (message.member.voice.channel) {
                 let channel = message.guild.channels.cache.get(message.member.voice.channel.id);
                 for (const [memberID, member] of channel.members) {
                     member.voice.setMute(true);
                 }
-                message.channel.send('```everyone in the voice channel has been muted```');
-            }
-            else {
-              message.reply('```Error: you need to join a voice channel first```');
+                message.channel.send('```muted```');
+            } else {
+              message.reply('```error: join a voice channel first```');
             }
         break;
 
         case 'unmute':
-            if (message.member.voice.channel) {
+            if(!message.member.roles.cache.some(r => r.name === 'officers')) {
+                message.channel.send('```error: you do not have permission to use this command```');
+                return;
+            } if (message.member.voice.channel) {
                 let channel = message.guild.channels.cache.get(message.member.voice.channel.id);
                 for (const [memberID, member] of channel.members) {
                     member.voice.setMute(false);
                 }
-                message.channel.send('```everyone in the voice channel has been unmuted```');
-            }
-            else {
-              message.reply('```Error: you need to join a voice channel first```');
+                message.channel.send('```unmuted```');
+            } else {
+              message.reply('```error: join a voice channel first```');
             }
         break;
 
         case 'purge':
             if(!message.member.roles.cache.some(r => r.name === 'officers')) {
-                message.channel.send('```Error: you do not have permission to use this command```');
+                message.channel.send('```error: you do not have permission to use this command```');
                 return;
             }
             message.channel.bulkDelete(10);
@@ -128,161 +164,157 @@ bot.on('message', message => {
 
         case 'role':
             if(!message.channel.name.includes('bot-spam')) {
-                message.channel.send('```Error: invalid channel to send commands```')
+                message.channel.send('```error: invalid channel to send commands```')
                 return;
-            }
-            if(!args[1]) {
-                message.channel.send('```!role <value> to add a role\n!role remove <value> to remove a role' + 
+            } if(!args[1]) {
+                message.channel.send('```!role <value> to add a role\nfor example, !role javascript\n!role remove <value> to remove a role\nfor example, !role remove javascript' + 
                 '\nprogramming languages: c, cplusplus, csharp, golang, java\njavascript, matlab, php, python, ruby\nscala, swift' +
                 '\npronouns: sheher, hehim, theythem, other```')
-            }
-            if(args[1] === 'remove') {
+                return;
+            } if(args[1] === 'remove') {
                 if(!args[2]) {
-                    message.channel.send('```Error: no third argument```');
+                    message.channel.send('```error: no third argument```');
                     return;
-                }if(args[2] === 'c') {
+                } if(args[2] === 'c') {
                     message.member.roles.remove(c);
                     message.channel.send('```c role removed ❌```');
                     return;
-                }if(args[2] === 'cplusplus') {
+                } if(args[2] === 'cplusplus') {
                     message.member.roles.remove(cplusplus);
                     message.channel.send('```cplusplus role removed ❌```');
                     return;
-                }if(args[2] === 'csharp') {
+                } if(args[2] === 'csharp') {
                     message.member.roles.remove(csharp);
                     message.channel.send('```csharp role removed ❌```');
                     return;
-                }if(args[2] === 'golang') {
+                } if(args[2] === 'golang') {
                     message.member.roles.remove(golang);
                     message.channel.send('```golang role removed ❌```');
                     return;
-                }if(args[2] === 'java') {
+                } if(args[2] === 'java') {
                     message.member.roles.remove(java);
                     message.channel.send('```java role removed ❌```');
                     return;
-                }if(args[2] === 'javascript') {
+                } if(args[2] === 'javascript') {
                     message.member.roles.remove(javascript);
                     message.channel.send('```javascript role removed ❌```');
                     return;
-                }if(args[2] === 'matlab') {
+                } if(args[2] === 'matlab') {
                     message.member.roles.remove(matlab);
                     message.channel.send('```matlab role removed ❌```');
                     return;
-                }if(args[2] === 'php') {
+                } if(args[2] === 'php') {
                     message.member.roles.remove(php);
                     message.channel.send('```php role removed ❌```');
                     return;
-                }if(args[2] === 'python') {
+                } if(args[2] === 'python') {
                     message.member.roles.remove(python);
                     message.channel.send('```python role removed ❌```');
                     return;
-                }if(args[2] === 'ruby') {
+                } if(args[2] === 'ruby') {
                     message.member.roles.remove(ruby);
                     message.channel.send('```ruby role removed ❌```');
                     return;
-                }if(args[2] === 'scala') {
+                } if(args[2] === 'scala') {
                     message.member.roles.remove(scala);
                     message.channel.send('```scala role removed ❌```');
                     return;
-                }if(args[2] === 'swift') {
+                } if(args[2] === 'swift') {
                     message.member.roles.remove(swift);
                     message.channel.send('```swift role removed ❌```');
                     return;
-                }if(args[2] === 'sheher') {
+                } if(args[2] === 'sheher') {
                     message.member.roles.remove(sheher);
                     message.channel.send('```sheher role removed ❌```');
                     return;
-                }if(args[2] === 'hehim') {
+                } if(args[2] === 'hehim') {
                     message.member.roles.remove(hehim);
                     message.channel.send('```hehim role removed ❌```');
                     return;
-                }if(args[2] === 'theythem') {
+                } if(args[2] === 'theythem') {
                     message.member.roles.remove(theythem);
                     message.channel.send('```theythem role removed ❌```');
                     return;
-                }if(args[2] === 'other') {
+                } if(args[2] === 'other') {
                     message.member.roles.remove(other);
                     message.channel.send('```other role removed ❌```');
                     return;
-                }else {
-                    message.channel.send('```Error: invalid third argument```');
+                } else {
+                    message.channel.send('```error: invalid third argument```');
                     return;
                 }
-            }
-            else { 
-                if(!args[1]) {
-                    message.channel.send('```Error: no second argument```');
-                    return;
-                }if(args[1] === 'c') {
+            } else { 
+                if(args[1] === 'c') {
                     message.member.roles.add(c);
                     message.channel.send('```c role added ✔️```');
                     return;
-                }if(args[1] === 'cplusplus') {
+                } if(args[1] === 'cplusplus') {
                     message.member.roles.add(cplusplus);
                     message.channel.send('```cplusplus role added ✔️```');
                     return;
-                }if(args[1] === 'csharp') {
+                } if(args[1] === 'csharp') {
                     message.member.roles.add(csharp);
                     message.channel.send('```csharp role added ✔️```');
                     return;
-                }if(args[1] === 'golang') {
+                } if(args[1] === 'golang') {
                     message.member.roles.add(golang);
                     message.channel.send('```golang role added ✔️```');
                     return;
-                }if(args[1] === 'java') {
+                } if(args[1] === 'java') {
                     message.member.roles.add(java);
                     message.channel.send('```java role added ✔️```');
                     return;
-                }if(args[1] === 'javascript') {
+                } if(args[1] === 'javascript') {
                     message.member.roles.add(javascript);
                     message.channel.send('```javascript role added ✔️```');
                     return;
-                }if(args[1] === 'matlab') {
+                } if(args[1] === 'matlab') {
                     message.member.roles.add(matlab);
                     message.channel.send('```matlab role added ✔️```');
                     return;
-                }if(args[1] === 'php') {
+                } if(args[1] === 'php') {
                     message.member.roles.add(php);
                     message.channel.send('```php role added ✔️```');
                     return;
-                }if(args[1] === 'python') {
+                } if(args[1] === 'python') {
                     message.member.roles.add(python);
                     message.channel.send('```python role added ✔️```');
                     return;
-                }if(args[1] === 'ruby') {
+                } if(args[1] === 'ruby') {
                     message.member.roles.add(ruby);
                     message.channel.send('```ruby role added ✔️```');
                     return;
-                }if(args[1] === 'scala') {
+                } if(args[1] === 'scala') {
                     message.member.roles.add(scala);
                     message.channel.send('```scala role added ✔️```');
                     return;
-                }if(args[1] === 'swift') {
+                } if(args[1] === 'swift') {
                     message.member.roles.add(swift);
                     message.channel.send('```swift role added ✔️```');
                     return;
-                }if(args[1] === 'sheher') {
+                } if(args[1] === 'sheher') {
                     message.member.roles.add(sheher);
                     message.channel.send('```sheher role added ✔️```');
                     return;
-                }if(args[1] === 'hehim') {
+                } if(args[1] === 'hehim') {
                     message.member.roles.add(hehim);
                     message.channel.send('```hehim role added ✔️```');
                     return;
-                }if(args[1] === 'theythem') {
+                } if(args[1] === 'theythem') {
                     message.member.roles.add(theythem);
                     message.channel.send('```theythem role added ✔️```');
                     return;
-                }if(args[1] === 'other') {
+                } if(args[1] === 'other') {
                     message.member.roles.add(other);
                     message.channel.send('```other role added ✔️```');
                     return;
-                }else {
-                    message.channel.send('```Error: invalid second argument```');
+                } else {
+                    message.channel.send('```error: invalid second argument```');
                     return;
                 }
             }
         break;
     }
 });
+
 bot.login(process.env.TOKEN);
