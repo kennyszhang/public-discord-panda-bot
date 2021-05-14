@@ -77,7 +77,7 @@ bot.on('message', message => {
                 message.channel.send('```error: invalid channel to send commands```')
                 return;
             }
-            message.channel.send('```commands:\n!btc\n!eth\n!doge\n!feed\n!gif, gif <value>\n!mute\n!unmute\n!role, role <value>, role remove <value>```');
+            message.channel.send('```commands:\n!btc, !eth, !doge\n!feed\n!gif, gif <value>\n!mute\n!unmute\n!role, role <value>, role remove <value>```');
         break;
 
         case 'feed':
